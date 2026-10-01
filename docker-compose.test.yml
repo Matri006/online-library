@@ -1,0 +1,14 @@
+name: online-library-tests
+services:
+  tests:
+    build:
+      context: .
+      target: build
+    command: ["mvn", "-B", "-ntp", "-Dapi.version=1.44", "test"]
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

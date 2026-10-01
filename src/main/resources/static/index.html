@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Онлайн-библиотека</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+  <section id="login-screen" class="login-screen">
+    <div class="login-intro"><div class="brand-mark">Б</div><p class="eyebrow">МОСКОВСКИЙ ПОЛИТЕХ</p><h1>Книги.<br>Знания.<br>Всё на месте.</h1><p>Единый каталог библиотеки, филиалов<br>и учебной литературы.</p></div>
+    <form id="login-form" class="login-card"><p class="eyebrow">ОНЛАЙН-БИБЛИОТЕКА</p><h2>Добро пожаловать</h2><p class="muted">Войдите под своей учётной записью.</p><label>Логин<input name="username" autocomplete="username" required autofocus></label><label>Пароль<input name="password" type="password" autocomplete="current-password" required></label><p id="login-error" class="error" role="alert"></p><button type="submit">Войти в библиотеку →</button></form>
+  </section>
+  <div id="workspace" hidden>
+    <aside><a class="brand" href="#books"><span class="brand-mark small">Б</span><span>Библиотека<small>Московский Политех</small></span></a><p class="nav-caption">РАБОЧЕЕ ПРОСТРАНСТВО</p><nav id="navigation"></nav><div class="account"><strong id="account-name"></strong><small id="account-role"></small><button id="logout" class="ghost">Выйти</button></div></aside>
+    <main><header><div><p class="eyebrow">ЭЛЕКТРОННЫЙ КАТАЛОГ / <span id="section-label"></span></p><h1 id="page-title"></h1><p id="page-description" class="muted"></p></div><button id="add-button" hidden>+ Добавить</button></header><div id="notice" role="status" hidden></div><div id="toolbar"></div><section id="content" aria-live="polite"></section><footer>АС «Библиотека» <span>Учёт фонда и учебной литературы</span></footer></main>
+  </div>
+  <dialog id="editor"><form id="edit-form"><div class="dialog-heading"><h2 id="editor-title"></h2><button type="button" id="close-editor" class="ghost" aria-label="Закрыть">✕</button></div><div id="editor-fields" class="form-grid"></div><p id="editor-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="cancel-editor" class="secondary">Отмена</button><button id="save-button" type="submit">Сохранить</button></div></form></dialog>
+</body></html>

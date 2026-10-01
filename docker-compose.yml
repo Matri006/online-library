@@ -1,0 +1,75 @@
+name: online-library
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library_owner -d library"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  db-init:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGDATABASE: library
+      PGUSER: library_owner
+      PGPASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+      APP_DB_PASSWORD: ${DB_PASSWORD:-app-local-demo}
+    volumes:
+      - ./docker/init-db.sh:/init-db.sh:ro
+    entrypoint: ["sh", "/init-db.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  app:
+    build: .
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/library
+      DB_USERNAME: library_app
+      DB_PASSWORD: ${DB_PASSWORD:-app-local-demo}
+      DB_OWNER_USERNAME: library_owner
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      LIBRARIAN_PASSWORD: ${LIBRARIAN_PASSWORD:-Library123!}
+      VIEWER_PASSWORD: ${VIEWER_PASSWORD:-Viewer123!}
+      DEMO_ENABLED: ${DEMO_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+    restart: unless-stopped
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGDATABASE: library
+      PGUSER: library_owner
+      PGPASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+    volumes:
+      - backups:/backups
+      - ./scripts/backup-loop.sh:/backup-loop.sh:ro
+    entrypoint: ["sh", "/backup-loop.sh"]
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  backups:
