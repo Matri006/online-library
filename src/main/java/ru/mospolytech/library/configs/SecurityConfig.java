@@ -24,6 +24,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
     SecurityFilterChain security(
             HttpSecurity http, AuditService audit, ObjectMapper json, UserDetailsService users)
             throws Exception {

@@ -29,7 +29,8 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 
-@SpringBootTest
+@org.springframework.test.context.ActiveProfiles("release")
+@SpringBootTest(properties = "spring.flyway.enabled=true")
 @AutoConfigureMockMvc
 @Testcontainers
 @WithMockUser(username = "admin", roles = "ADMIN")
@@ -90,6 +91,59 @@ class LibraryIntegrationTest {
                         Long.class,
                         branch);
         student = students.save(null, new Requests.Student("001", "Студент", faculty, true));
+    }
+
+    @Test
+    void booksSupportFullHttpCrud() throws Exception {
+        String body = """
+                {"title":"CRUD example","publisherId":%d,"publicationYear":2024,
+                 "pagesCount":100,"illustrationsCount":0,"price":100,"authorIds":[%d]}
+                """.formatted(publisher, author);
+        var created = mvc.perform(post("/api/books").with(csrf())
+                        .contentType("application/json").content(body))
+                .andExpect(status().isOk()).andReturn();
+        long id = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        mvc.perform(get("/api/books").param("q", "CRUD example"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].book_id").value(id));
+        mvc.perform(put("/api/books/{id}", id).with(csrf())
+                        .contentType("application/json").content(body.replace("CRUD example", "Updated example")))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/books/{id}", id).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/books").param("q", "Updated example"))
+                .andExpect(jsonPath("$.total").value(0));
+        assertEquals(0, jdbc.queryForObject("select count(*) from book_author where book_id=?", Integer.class, id));
+        assertTrue(jdbc.queryForObject("select exists(select 1 from audit_log where entity_type='book' and operation='DELETE' and entity_key->>'book_id'=?)", Boolean.class, Long.toString(id)));
+        mvc.perform(delete("/api/books/{id}", id).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void booksWithStockOrUsageCannotBeDeleted() throws Exception {
+        usages.add(new Requests.Usage(branch, book, faculty));
+        long stockedBook = books.save(null, bookData("Книга с выдачей", 2024, List.of(author)));
+        stocks.setStock(new Requests.Stock(location, stockedBook, 1, 0));
+        loans.issue(new Requests.Issue(location, stockedBook, student));
+        mvc.perform(delete("/api/books/{id}", book).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BOOK_IN_USE"));
+        mvc.perform(delete("/api/books/{id}", stockedBook).with(csrf()))
+                .andExpect(status().isConflict());
+        assertEquals(1, jdbc.queryForObject("select count(*) from book_author where book_id=?", Integer.class, book));
+        assertEquals(1, jdbc.queryForObject("select count(*) from loan where book_id=?", Integer.class, stockedBook));
+    }
+
+    @Test
+    void deletingBooksRequiresWriteRoleAndCsrf() throws Exception {
+        users.save(null, new Requests.User("delete-reader", "Reader123!", "VIEWER", true));
+        mvc.perform(delete("/api/books/{id}", book)
+                        .with(user("delete-reader").roles("VIEWER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/books/{id}", book))
+                .andExpect(status().isForbidden());
+        assertEquals(1, jdbc.queryForObject("select count(*) from book where book_id=?", Integer.class, book));
     }
 
     @Test

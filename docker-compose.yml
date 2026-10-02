@@ -1,11 +1,22 @@
 name: online-library
+
+x-application: &application
+  image: online-library:${APP_VERSION:-local}
+  build: .
+
+x-database-client: &database-client
+  DB_URL: jdbc:postgresql://db:5432/library
+  DB_USERNAME: library_app
+  DB_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+
 services:
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: library
       POSTGRES_USER: library_owner
-      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,14 +25,15 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped
+
   db-init:
     image: postgres:16-alpine
     environment:
       PGHOST: db
       PGDATABASE: library
       PGUSER: library_owner
-      PGPASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
-      APP_DB_PASSWORD: ${DB_PASSWORD:-app-local-demo}
+      PGPASSWORD: ${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD in .env}
+      APP_DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     volumes:
       - ./docker/init-db.sh:/init-db.sh:ro
     entrypoint: ["sh", "/init-db.sh"]
@@ -29,39 +41,57 @@ services:
       db:
         condition: service_healthy
     restart: "no"
+
+  release:
+    <<: *application
+    command: ["--spring.profiles.active=release", "--spring.main.web-application-type=none"]
+    environment:
+      <<: *database-client
+      MIGRATIONS_ENABLED: "true"
+      DB_OWNER_USERNAME: library_owner
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      LIBRARIAN_PASSWORD: ${LIBRARIAN_PASSWORD:-}
+      VIEWER_PASSWORD: ${VIEWER_PASSWORD:-}
+      DEMO_ENABLED: ${DEMO_ENABLED:-false}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
   app:
-    build: .
+    <<: *application
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
     environment:
-      DB_URL: jdbc:postgresql://db:5432/library
-      DB_USERNAME: library_app
-      DB_PASSWORD: ${DB_PASSWORD:-app-local-demo}
-      DB_OWNER_USERNAME: library_owner
-      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
-      LIBRARIAN_PASSWORD: ${LIBRARIAN_PASSWORD:-Library123!}
-      VIEWER_PASSWORD: ${VIEWER_PASSWORD:-Viewer123!}
-      DEMO_ENABLED: ${DEMO_ENABLED:-true}
+      <<: *database-client
+      PORT: "8080"
+      MIGRATIONS_ENABLED: "false"
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-30m}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
     depends_on:
-      db:
-        condition: service_healthy
-      db-init:
+      release:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      start_period: 60s
+      start_period: 40s
       retries: 10
+    stop_grace_period: 30s
+    mem_limit: ${APP_MEMORY_LIMIT:-512m}
     restart: unless-stopped
+
   backup:
     image: postgres:16-alpine
+    profiles: ["ops"]
     environment:
       PGHOST: db
       PGDATABASE: library
       PGUSER: library_owner
-      PGPASSWORD: ${DB_OWNER_PASSWORD:-owner-local-demo}
+      PGPASSWORD: ${DB_OWNER_PASSWORD:?Set DB_OWNER_PASSWORD in .env}
     volumes:
       - backups:/backups
       - ./scripts/backup-loop.sh:/backup-loop.sh:ro
@@ -70,6 +100,7 @@ services:
       app:
         condition: service_healthy
     restart: unless-stopped
+
 volumes:
   postgres_data:
   backups:

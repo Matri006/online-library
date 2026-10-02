@@ -1,0 +1,5 @@
+# Docker Compose >= 2.24.4. Each replica receives a distinct local port.
+services:
+  app:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}::8080"

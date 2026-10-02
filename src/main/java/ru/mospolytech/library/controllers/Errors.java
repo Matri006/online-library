@@ -32,6 +32,7 @@ public class Errors {
                             "INVALID_BOOK_DATA",
                             "Проверьте данные книги: страницы > 0, иллюстрации и стоимость ≥ 0."),
                     Map.entry("AUTHOR_REQUIRED", "Выберите хотя бы одного автора."),
+                    Map.entry("BOOK_IN_USE", "Книга связана с фондом или учебным использованием. Удаление запрещено для сохранения данных и истории выдач."),
                     Map.entry(
                             "NEGATIVE_STOCK",
                             "Количество экземпляров не может быть отрицательным."),
@@ -112,6 +113,7 @@ public class Errors {
                     case "ENTITY_NOT_FOUND" -> 404;
                     case "INTERNAL_ERROR" -> 500;
                     case "STOCK_CONFLICT",
+                            "BOOK_IN_USE",
                             "DUPLICATE_BOOK",
                             "DUPLICATE_BRANCH",
                             "DUPLICATE_ENTITY",

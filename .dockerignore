@@ -1,5 +1,11 @@
 target
 .git
 .env
+.env.*
+!.env.example
 *.dump
 .DS_Store
+.idea
+*.iml
+artifacts
+__pycache__

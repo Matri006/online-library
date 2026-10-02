@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import ru.mospolytech.library.dto.Responses;
 import ru.mospolytech.library.entities.Book;
+import ru.mospolytech.library.exceptions.LibraryException;
 
 import java.util.List;
 import java.util.Map;
@@ -115,5 +116,20 @@ public class BookRepository {
         }
         jdbc.execute("set constraints all immediate");
         return id;
+    }
+
+    public void delete(long id) {
+        jdbc.execute("select pg_advisory_xact_lock(817001)");
+        if (jdbc.queryForList("select book_id from book where book_id = ? for update", id).isEmpty()) {
+            throw new LibraryException("ENTITY_NOT_FOUND");
+        }
+        if (Boolean.TRUE.equals(jdbc.queryForObject("""
+                select exists(select 1 from book_stock where book_id = ?)
+                    or exists(select 1 from book_usage where book_id = ?)
+                """, Boolean.class, id, id))) {
+            throw new LibraryException("BOOK_IN_USE");
+        }
+        jdbc.update("delete from book_author where book_id = ?", id);
+        jdbc.update("delete from book where book_id = ?", id);
     }
 }

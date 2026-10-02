@@ -3,10 +3,12 @@ package ru.mospolytech.library.configs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 import ru.mospolytech.library.services.BootstrapService;
 
 @Component
+@Profile("release")
 public class Bootstrap implements CommandLineRunner {
     private final BootstrapService service;
     private final boolean demo;

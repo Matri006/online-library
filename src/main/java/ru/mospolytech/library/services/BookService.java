@@ -45,4 +45,11 @@ public class BookService {
                         request.price());
         return operations.complete("save_book", books.save(book, request.authorIds()));
     }
+
+    @Transactional
+    public void delete(long id) {
+        operations.begin("delete_book");
+        books.delete(id);
+        operations.complete("delete_book", id);
+    }
 }

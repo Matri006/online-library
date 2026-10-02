@@ -17,7 +17,8 @@ import ru.mospolytech.library.services.BookService;
 import ru.mospolytech.library.services.BootstrapService;
 import ru.mospolytech.library.services.ReportService;
 
-@SpringBootTest
+@org.springframework.test.context.ActiveProfiles("release")
+@SpringBootTest(properties = "spring.flyway.enabled=true")
 @Testcontainers
 class BootstrapIntegrationTest {
     @Container

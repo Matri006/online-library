@@ -38,4 +38,11 @@ public class BookController {
     public Responses.Id update(@PathVariable long id, @Valid @RequestBody Requests.Book request) {
         return new Responses.Id(service.save(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ADMIN','LIBRARIAN')")
+    public void delete(@PathVariable long id) {
+        service.delete(id);
+    }
 }

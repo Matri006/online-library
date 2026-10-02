@@ -10,5 +10,6 @@ RUN groupadd --system library && useradd --system --gid library --home-dir /app 
 WORKDIR /app
 COPY --from=build --chown=library:library /build/target/online-library-1.0.0.jar app.jar
 USER library
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
 EXPOSE 8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

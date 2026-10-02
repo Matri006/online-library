@@ -28,3 +28,7 @@ target/
 .DS_Store
 .idea/
 *.iml
+.env.*
+!.env.example
+artifacts/
+__pycache__/
